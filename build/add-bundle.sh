@@ -60,21 +60,52 @@ for channel in ${bundle_channels//,/ }; do
     new_channel=${new_channel} yq '.entries += env(new_channel)' -i catalog-template.yaml
   fi
 
+  # Check if this version already exists in the channel
+  existing_entry=$(yq '.entries[] | select(.schema == "olm.channel") | select(.name == "'"${channel}"'").entries[] | select(.name == "volsync-product.'"${bundle_version}"'")' catalog-template.yaml)
+
+  if [[ -n "${existing_entry}" ]]; then
+    echo "    Version ${bundle_version} already exists in channel ${channel}, skipping entries update"
+    continue
+  fi
+
   entries_in_channel=$(yq '.entries[] | select(.schema == "olm.channel") | select(.name == "'"${channel}"'").entries | length' catalog-template.yaml)
   if [[ "${entries_in_channel}" == "0" ]]; then
-    # No previous version to replace
-    echo "    adding first version to entries (no replaces version)"
+    # No previous version - this is the first
+    echo "    Adding first version to entries (no replaces version)"
     channel_entry="
       name: volsync-product.${bundle_version}
       skipRange: '>=0.4.0 <${bundle_version#v}'
-    " yq '.entries[] |= select(.schema == "olm.channel") |= select(.name == "'"${channel}"'").entries += env(channel_entry)' -i catalog-template.yaml
+    "
   else
-    replaces_version=$(yq '.entries[] | select(.schema == "olm.channel") | select(.name == "'"${channel}"'").entries[-1].name' catalog-template.yaml)
-    echo "    replaces_version is: ${replaces_version}"
+    # Add to end first - we'll sort later
+    echo "    Adding new version to end of entries"
     channel_entry="
       name: volsync-product.${bundle_version}
-      replaces: ${replaces_version}
       skipRange: '>=0.4.0 <${bundle_version#v}'
-    " yq '.entries[] |= select(.schema == "olm.channel") |= select(.name == "'"${channel}"'").entries += env(channel_entry)' -i catalog-template.yaml
+    "
   fi
+
+  # Add the entry to the end
+  channel_entry=${channel_entry} yq '.entries[] |= select(.schema == "olm.channel") |= select(.name == "'"${channel}"'").entries += env(channel_entry)' -i catalog-template.yaml
+
+  # Now sort the entries by version and rebuild replaces chain
+  echo "    Sorting entries and fixing replaces chain"
+
+  # Sort entries in place by name (which includes version)
+  yq '.entries[] |= select(.schema == "olm.channel") |= select(.name == "'"${channel}"'").entries |= sort_by(.name)' -i catalog-template.yaml
+
+  # Rebuild replaces chain - get sorted entry names
+  sorted_names=$(yq '.entries[] | select(.schema == "olm.channel") | select(.name == "'"${channel}"'").entries[].name' catalog-template.yaml)
+
+  # Clear replaces fields first, then rebuild the chain
+  yq '.entries[] |= select(.schema == "olm.channel") |= select(.name == "'"${channel}"'").entries[] |= del(.replaces)' -i catalog-template.yaml
+
+  previous_name=""
+  while IFS= read -r current_name; do
+    if [[ -n "${current_name}" && -n "${previous_name}" ]]; then
+      # Add replaces field right after name to maintain field order (name, replaces, skipRange)
+      yq '.entries[] |= select(.schema == "olm.channel") |= select(.name == "'"${channel}"'").entries[] |= select(.name == "'"${current_name}"'") |= .name as $n | .replaces = "'"${previous_name}"'" | . = {"name": $n, "replaces": .replaces} + del(.name, .replaces)' -i catalog-template.yaml
+    fi
+    previous_name="${current_name}"
+  done <<< "${sorted_names}"
 done
