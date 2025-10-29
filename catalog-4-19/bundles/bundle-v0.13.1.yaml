@@ -203,9 +203,9 @@ properties:
       provider:
         name: Red Hat
 relatedImages:
-  - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:32cd9b5812506656ff9ff1c2c9fdacde44f179313ea2bfbbc18564fee635ca67
-    name: ""
   - image: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9@sha256:d37a6d10b0fa07370066a31fdaffe2ea553faf4e4e98be7fcef5ec40d62ffe29
+    name: ""
+  - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:32cd9b5812506656ff9ff1c2c9fdacde44f179313ea2bfbbc18564fee635ca67
     name: ""
   - image: registry.redhat.io/rhacm2/volsync-rhel9@sha256:50840a92f947e739ef4e7cc1106341511221cd22901fc818f4f53697ef73045b
     name: ""
