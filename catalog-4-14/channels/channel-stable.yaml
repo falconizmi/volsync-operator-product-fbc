@@ -18,11 +18,8 @@ entries:
   - name: volsync-product.v0.13.1
     replaces: volsync-product.v0.13.0
     skipRange: '>=0.4.0 <0.13.1'
-  - name: volsync-product.v0.13.2
-    replaces: volsync-product.v0.13.1
-    skipRange: '>=0.4.0 <0.13.2'
   - name: volsync-product.v0.14.0
-    replaces: volsync-product.v0.13.2
+    replaces: volsync-product.v0.13.1
     skipRange: '>=0.4.0 <0.14.0'
   - name: volsync-product.v0.14.1
     replaces: volsync-product.v0.14.0
