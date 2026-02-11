@@ -1,0 +1,61 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/stolostron/volsync-operator-product-fbc?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    # when adding filter for directory use "directory/***".pathChanged()
+    # when adding filter for git submodule use "submodule".pathChanged()
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "dev" &&
+      (".tekton/volsync-fbc-4-22-dev-pull-request.yaml".pathChanged() ||
+      ".tekton/volsync-fbc-4-22-dev-push.yaml".pathChanged() ||
+      "catalog.Dockerfile".pathChanged() ||
+      "catalog-4-22/***".pathChanged())
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: volsync-fbc-dev
+    appstudio.openshift.io/component: volsync-fbc-4-22-dev
+    pipelines.appstudio.openshift.io/type: build
+  name: volsync-fbc-4-22-dev-on-pull-request
+  namespace: volsync-tenant
+spec:
+  params:
+    - name: git-url
+      value: '{{source_url}}'
+    - name: revision
+      value: '{{revision}}'
+    - name: output-image
+      value: quay.io/redhat-user-workloads/volsync-tenant/volsync-fbc-4-22:on-pr-{{revision}}
+    - name: image-expires-after
+      value: 5d
+    - name: build-platforms
+      value:
+        - linux/x86_64
+    - name: dockerfile
+      value: catalog.Dockerfile
+    - name: hermetic
+      value: "true"
+    - name: build-args
+      value:
+        - OPM_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry-rhel9:v4.22
+        - INPUT_DIR=catalog-4-22
+  pipelineRef:
+    resolver: git
+    params:
+      - name: url
+        value: https://github.com/stolostron/konflux-build-catalog.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipelines/common-fbc.yaml
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-volsync-fbc-4-22-dev
+  workspaces:
+    - name: git-auth
+      secret:
+        secretName: '{{ git_auth_secret }}'
+status: {}
