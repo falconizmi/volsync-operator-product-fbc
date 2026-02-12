@@ -3,6 +3,11 @@ ARG OPM_IMAGE=quay.io/operator-framework/opm:latest
 # For <= 4.14, use registry.redhat.io/openshift4/ose-operator-registry:v4.yy
 # For >= 4.15, use registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.yy
 
+# Note: for a time we needed to get images from brew for pre-release OCP
+# versions - ATM this is not needed, but in case this is needed
+# in the future, the format was like this:
+# brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry-rhel9:v4.21
+
 # The builder image is expected to contain /bin/opm (with serve subcommand)
 FROM ${OPM_IMAGE} as builder
 

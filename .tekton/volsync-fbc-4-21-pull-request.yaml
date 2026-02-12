@@ -41,7 +41,7 @@ spec:
       value: "true"
     - name: build-args
       value:
-        - OPM_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry-rhel9:v4.21
+        - OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.21
         - INPUT_DIR=catalog-4-21
   pipelineRef:
     resolver: git
