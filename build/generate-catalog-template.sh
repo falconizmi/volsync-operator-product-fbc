@@ -13,9 +13,21 @@ jq '.' drop-versions.json
 ocp_versions=$(jq -r 'keys[]' drop-versions.json)
 
 shouldPrune() {
-  oldest_version="$(jq -r ".[\"${1}\"]" drop-versions.json).99"
+  # decision when to prune, is based on the value of ocp keys in drop-versions.json where variables:
+  # prune_until
+  # - is representing the value of volsync version, until which version (inclusive) the script will be pruning
+  # - another way of understanding it, is from which version (not inclusive) the script will STOP the pruning 
+  # prune_from
+  # - is representing the value of volsync version, from which version (not inclusive) the script will be pruning
+  # - another way of understanding it, is until which version (inclusive) the script will BE NOT pruning 
+  # 
 
-  [[ "$(printf "%s\n%s\n" "${2}" "${oldest_version}" | sort --version-sort | tail -1)" == "${oldest_version}" ]]
+  prune_until="$(jq -r ".[\"${1}\"][\"prune_until\"]" drop-versions.json).99"
+  prune_from="$(jq -r ".[\"${1}\"][\"prune_from\"]" drop-versions.json).99"
+
+  [[ "$(printf "%s\n%s\n" "${2}" "${prune_until}" | sort --version-sort | tail -1)" == "${prune_until}" || \
+     ("${prune_from}" != ".99" && "$(printf "%s\n%s\n" "${2}" "${prune_from}" | sort --version-sort | head -1)" == "${prune_from}")
+  ]]
 
   return $?
 }
