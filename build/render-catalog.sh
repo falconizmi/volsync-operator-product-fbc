@@ -45,6 +45,7 @@ done
 
 rm catalog-template-*.yaml
 
+#TODO this method is no longer applicable
 # Use oldest catalog to populate bundle names for reference
 oldest_catalog=$(find catalog-* -type d | head -1)
 
