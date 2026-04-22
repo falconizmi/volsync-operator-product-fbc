@@ -5,31 +5,38 @@
 #      broken YAML, missing fields, invalid upgrade graphs, and unreachable images.
 #
 #   2. IMAGE EXISTENCE — every olm.bundle image is reachable via skopeo inspect.
-#      Images added in the current PR (not present in the base branch) produce
-#      a warning instead of a failure, since they may not yet be mirrored to
-#      the official registry.
+#      If an image is not found at its primary URL, falls back to quay.io mirrors
+#      defined in .tekton/images-mirror-set.yaml using longest-prefix matching.
+#      Images found only on a mirror are treated as a warning (unreleased).
 #
-# Optional: set BASE_CATALOG to a path containing the base branch's
-# catalog-template.yaml to enable new-image detection.
+# Mirror fallback follows the same approach as the Konflux community task:
+# https://github.com/konflux-ci/community-catalog/tree/main/tasks/validate-fbc-images-resolvable
 #
-# Requires registry credentials (e.g. skopeo login registry.redhat.io, or a pull secret).
+# Requires registry credentials via REGISTRY_AUTH_FILE env var or skopeo login.
 #
 # Requires: bash, yq, opm, skopeo
 
 set -eo pipefail
+
+MIRROR_SET=".tekton/images-mirror-set.yaml"
 
 if [[ ! -f "catalog-template.yaml" ]]; then
   echo "error: catalog-template.yaml not found. Script must be run from the base of the repository."
   exit 1
 fi
 
-base_images=""
-if [[ -n "${BASE_CATALOG}" && -f "${BASE_CATALOG}" ]]; then
-  base_images=$(yq '.entries[] | select(.schema == "olm.bundle") | .image' "${BASE_CATALOG}")
-  echo "=== Base branch catalog loaded — new images will be warned, not failed ==="
-  echo ""
+# Load mirror sources and their first mirror from the ImageDigestMirrorSet
+mirror_sources=()
+mirror_targets=()
+if [[ -f "${MIRROR_SET}" ]]; then
+  mapfile -t mirror_sources < <(yq '.spec.imageDigestMirrors[].source' "${MIRROR_SET}")
+  mapfile -t mirror_targets < <(yq '.spec.imageDigestMirrors[].mirrors[0]' "${MIRROR_SET}")
+  echo "=== Loaded ${#mirror_sources[@]} mirror source(s) from ${MIRROR_SET} ==="
+else
+  echo "=== WARNING: ${MIRROR_SET} not found — mirror fallback disabled ==="
 fi
 
+echo ""
 echo "=== Step 1: Rendering catalog-template.yaml (opm) ==="
 if ! opm alpha render-template basic catalog-template.yaml -o yaml > /dev/null; then
   echo ""
@@ -45,25 +52,54 @@ failed=0
 warned=0
 while IFS=' ' read -r bundle_name bundle_image; do
   echo "  Checking ${bundle_name} ..."
-  if ! skopeo inspect --override-os=linux --override-arch=amd64 "docker://${bundle_image}" > /dev/null; then
-    if [[ -n "${base_images}" ]] && ! echo "${base_images}" | grep -qF "${bundle_image}"; then
-      echo "  WARNING: ${bundle_name} — new image not yet in registry (expected): ${bundle_image}"
-      warned=$((warned + 1))
-    else
-      echo "  ERROR: ${bundle_name} — image not found or inaccessible: ${bundle_image}"
-      failed=1
+
+  if timeout 60 skopeo inspect --override-os=linux --override-arch=amd64 "docker://${bundle_image}" > /dev/null 2>&1; then
+    echo "  -> OK: available at primary URL"
+    continue
+  fi
+
+  echo "  -> Not found at primary URL, checking mirrors ..."
+  image_repo="${bundle_image%%@*}"
+  image_digest="${bundle_image##*@}"
+
+  # Longest-prefix matching against mirror sources
+  best_match_source=""
+  best_match_mirror=""
+  for i in "${!mirror_sources[@]}"; do
+    source="${mirror_sources[$i]}"
+    if [[ "${image_repo}" == "${source}"* && ${#source} -gt ${#best_match_source} ]]; then
+      best_match_source="${source}"
+      best_match_mirror="${mirror_targets[$i]}"
     fi
+  done
+
+  if [[ -z "${best_match_source}" ]]; then
+    echo "  -> ERROR: no mirror configured for ${image_repo}"
+    failed=1
+    continue
+  fi
+
+  image_suffix="${image_repo#"${best_match_source}"}"
+  resolved_url="${best_match_mirror}${image_suffix}@${image_digest}"
+  echo "  -> Trying mirror: ${resolved_url}"
+
+  if timeout 60 skopeo inspect --override-os=linux --override-arch=amd64 "docker://${resolved_url}" > /dev/null 2>&1; then
+    echo "  -> WARNING: found on mirror but not at primary URL (unreleased)"
+    warned=$((warned + 1))
+  else
+    echo "  -> ERROR: not found at primary URL or mirror: ${bundle_image}"
+    failed=1
   fi
 done < <(yq '.entries[] | select(.schema == "olm.bundle") | .name + " " + .image' catalog-template.yaml)
 
 if [[ ${warned} -gt 0 ]]; then
   echo ""
-  echo "NOTE: ${warned} new image(s) not yet in registry — this is expected for unreleased bundles."
+  echo "NOTE: ${warned} image(s) found on mirror only — expected for unreleased bundles."
 fi
 
 if [[ ${failed} -ne 0 ]]; then
   echo ""
-  echo "ERROR: One or more existing bundle images are missing or inaccessible."
+  echo "ERROR: One or more bundle images are missing or inaccessible."
   exit 1
 fi
 
