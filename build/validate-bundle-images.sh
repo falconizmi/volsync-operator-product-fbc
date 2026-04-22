@@ -12,8 +12,8 @@
 
 set -eo pipefail
 
-if [[ $(basename "${PWD}") != "volsync-operator-product-fbc" ]]; then
-  echo "error: Script must be run from the base of the repository."
+if [[ ! -f "catalog-template.yaml" ]]; then
+  echo "error: catalog-template.yaml not found. Script must be run from the base of the repository."
   exit 1
 fi
 

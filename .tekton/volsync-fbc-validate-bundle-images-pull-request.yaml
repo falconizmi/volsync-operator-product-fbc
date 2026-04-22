@@ -80,7 +80,7 @@ spec:
                 #!/bin/bash
                 set -eo pipefail
 
-                export HOME=/workspace/source
+                export HOME=/tmp
                 git config --global --add safe.directory /workspace/source
 
                 echo "=== Cloning repository ==="
