@@ -80,6 +80,8 @@ spec:
                 #!/bin/bash
                 set -eo pipefail
 
+                git config --global --add safe.directory /workspace/source
+
                 echo "=== Cloning repository ==="
                 git clone --depth=1 "${PARAM_URL}" .
                 git fetch --depth=1 origin "${PARAM_REVISION}"
