@@ -70,6 +70,10 @@ spec:
                   value: $(params.git-url)
                 - name: PARAM_REVISION
                   value: $(params.revision)
+                - name: PARAM_TARGET_BRANCH
+                  value: main
+                - name: PARAM_UPSTREAM_URL
+                  value: https://github.com/stolostron/volsync-operator-product-fbc.git
                 - name: REGISTRY_AUTH_FILE
                   value: /etc/containers/auth/auth.json
               volumeMounts:
@@ -87,6 +91,12 @@ spec:
                 git clone --depth=1 "${PARAM_URL}" .
                 git fetch --depth=1 origin "${PARAM_REVISION}"
                 git checkout "${PARAM_REVISION}"
+
+                echo ""
+                echo "=== Fetching base branch catalog-template.yaml ==="
+                git fetch --depth=1 "${PARAM_UPSTREAM_URL}" "${PARAM_TARGET_BRANCH}"
+                git show FETCH_HEAD:catalog-template.yaml > /tmp/base-catalog-template.yaml
+                export BASE_CATALOG=/tmp/base-catalog-template.yaml
 
                 echo ""
                 bash build/validate-bundle-images.sh
