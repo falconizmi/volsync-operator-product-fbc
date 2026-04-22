@@ -1,0 +1,22 @@
+name: Validate catalogs
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+      - dev
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install opm
+        run: make opm
+
+      - name: Validate catalogs
+        run: make validate-catalog
