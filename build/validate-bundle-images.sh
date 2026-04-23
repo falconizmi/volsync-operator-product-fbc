@@ -25,12 +25,10 @@ if [[ ! -f "catalog-template.yaml" ]]; then
   exit 1
 fi
 
-# Load mirror sources and their first mirror from the ImageDigestMirrorSet
+# Load mirror sources from the ImageDigestMirrorSet
 mirror_sources=()
-mirror_targets=()
 if [[ -f "${MIRROR_SET}" ]]; then
   mapfile -t mirror_sources < <(yq '.spec.imageDigestMirrors[].source' "${MIRROR_SET}")
-  mapfile -t mirror_targets < <(yq '.spec.imageDigestMirrors[].mirrors[0]' "${MIRROR_SET}")
   echo "=== Loaded ${#mirror_sources[@]} mirror source(s) from ${MIRROR_SET} ==="
 else
   echo "=== WARNING: ${MIRROR_SET} not found — mirror fallback disabled ==="
@@ -62,14 +60,14 @@ while IFS=' ' read -r bundle_name bundle_image; do
   image_repo="${bundle_image%%@*}"
   image_digest="${bundle_image##*@}"
 
-  # Longest-prefix matching against mirror sources
+  # Longest-prefix matching to find the right IDMS entry, then try all its mirrors
   best_match_source=""
-  best_match_mirror=""
+  best_match_index=""
   for i in "${!mirror_sources[@]}"; do
     source="${mirror_sources[$i]}"
     if [[ "${image_repo}" == "${source}"* && ${#source} -gt ${#best_match_source} ]]; then
       best_match_source="${source}"
-      best_match_mirror="${mirror_targets[$i]}"
+      best_match_index="${i}"
     fi
   done
 
@@ -80,14 +78,21 @@ while IFS=' ' read -r bundle_name bundle_image; do
   fi
 
   image_suffix="${image_repo#"${best_match_source}"}"
-  resolved_url="${best_match_mirror}${image_suffix}@${image_digest}"
-  echo "  -> Trying mirror: ${resolved_url}"
+  found_on_mirror=false
+  while IFS= read -r mirror; do
+    resolved_url="${mirror}${image_suffix}@${image_digest}"
+    echo "  -> Trying mirror: ${resolved_url}"
+    if timeout 60 skopeo inspect --override-os=linux --override-arch=amd64 "docker://${resolved_url}" > /dev/null 2>&1; then
+      found_on_mirror=true
+      break
+    fi
+  done < <(yq ".spec.imageDigestMirrors[${best_match_index}].mirrors[]" "${MIRROR_SET}")
 
-  if timeout 60 skopeo inspect --override-os=linux --override-arch=amd64 "docker://${resolved_url}" > /dev/null 2>&1; then
+  if [[ "${found_on_mirror}" == true ]]; then
     echo "  -> WARNING: found on mirror but not at primary URL (unreleased)"
     warned=$((warned + 1))
   else
-    echo "  -> ERROR: not found at primary URL or mirror: ${bundle_image}"
+    echo "  -> ERROR: not found at primary URL or any mirror: ${bundle_image}"
     failed=1
   fi
 done < <(yq '.entries[] | select(.schema == "olm.bundle") | .name + " " + .image' catalog-template.yaml)
