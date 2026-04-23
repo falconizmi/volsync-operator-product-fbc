@@ -8,13 +8,14 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main" &&
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" &&
+      (target_branch == "main" || target_branch == "dev") &&
       (".tekton/volsync-fbc-validate-bundle-images-pull-request.yaml".pathChanged() ||
       "catalog-template.yaml".pathChanged() ||
-      "build/validate-bundle-images.sh".pathChanged())
+      "build/validate-bundle-images.sh".pathChanged() ||
+      ".tekton/images-mirror-set.yaml".pathChanged())
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: volsync-fbc
     pipelines.appstudio.openshift.io/type: test
   name: volsync-fbc-validate-bundle-images-on-pull-request
   namespace: volsync-tenant
