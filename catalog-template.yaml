@@ -74,12 +74,18 @@ entries:
       - name: volsync-product.v0.16.3
         skipRange: '>=0.4.0 <0.16.3'
         replaces: volsync-product.v0.16.2
+      - name: volsync-product.v0.16.4
+        skipRange: '>=0.4.0 <0.16.4'
+        replaces: volsync-product.v0.16.3
       - name: volsync-product.v0.17.0
         skipRange: '>=0.4.0 <0.17.0'
-        replaces: volsync-product.v0.16.3
+        replaces: volsync-product.v0.16.4
       - name: volsync-product.v0.17.1
         skipRange: '>=0.4.0 <0.17.1'
         replaces: volsync-product.v0.17.0
+      - name: volsync-product.v0.17.2
+        skipRange: '>=0.4.0 <0.17.2'
+        replaces: volsync-product.v0.17.1
     name: stable
     package: volsync-product
     schema: olm.channel
@@ -188,6 +194,9 @@ entries:
       - name: volsync-product.v0.16.3
         skipRange: '>=0.4.0 <0.16.3'
         replaces: volsync-product.v0.16.2
+      - name: volsync-product.v0.16.4
+        skipRange: '>=0.4.0 <0.16.4'
+        replaces: volsync-product.v0.16.3
   - name: stable-0.17
     package: volsync-product
     schema: olm.channel
@@ -197,6 +206,9 @@ entries:
       - name: volsync-product.v0.17.1
         skipRange: '>=0.4.0 <0.17.1'
         replaces: volsync-product.v0.17.0
+      - name: volsync-product.v0.17.2
+        skipRange: '>=0.4.0 <0.17.2'
+        replaces: volsync-product.v0.17.1
   - entries:
       - name: volsync-product.v0.7.1
         replaces: volsync-product.v0.7.0
@@ -332,12 +344,18 @@ entries:
   - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:85cb9501f3f9c624e1834361ffd00fa9f82762ad559fdfc772a86ae33b96bf1d
     schema: olm.bundle
     name: volsync-product.v0.16.3
+  - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:1423b0c6e58e3a89e8f932fc867ac20b345e90ee6a48279cbc3d5bf62e62753b
+    schema: olm.bundle
+    name: volsync-product.v0.16.4
   - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:8586762492c72000cd5cd54d3766749d19266abaf408144fb8ba605fc31e0435
     schema: olm.bundle
     name: volsync-product.v0.17.0
   - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:ad480fbd585ddc8f3d03f27470a9675c6a1e4250baff8b4d4f22853a1c5eff0c
     schema: olm.bundle
     name: volsync-product.v0.17.1
+  - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:527a9328f56769bc700e530ba13cc707acfc09ce587dadbb01ab7c835e18b4a8
+    schema: olm.bundle
+    name: volsync-product.v0.17.2
   - image: registry.redhat.io/rhacm2/volsync-operator-bundle@sha256:94a9dec0ec4c0a03cb273c00e3656011e11941b4a99184f0a3ddee063f13206e
     schema: olm.bundle
     name: volsync-product.v0.5.2
